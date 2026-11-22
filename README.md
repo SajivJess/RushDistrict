@@ -1,63 +1,73 @@
-# Next.js Ecommerce Starter (Free, Open Source)
+# Rush District
 
-A free, open-source Next.js ecommerce starter: a complete storefront template built with **Next.js 16**, **Tailwind CSS v4** and **shadcn/ui**. Clone it, swap in your products, and you've got a fast, accessible shop front to build your Next.js ecommerce site on.
+Rush District is an independent Monster Energy storefront prototype serving Kanyakumari District.
 
-More details and a comparison with the full kits: [thefrontkit.com/free-nextjs-ecommerce-starter](https://thefrontkit.com/free-nextjs-ecommerce-starter?utm_source=github&utm_medium=storefront-lite&utm_campaign=readme).
+## Run locally
 
-Made by [thefrontkit](https://thefrontkit.com?utm_source=github&utm_medium=storefront-lite&utm_campaign=readme).
+Use Node.js 22.13 or later with the built-in SQLite module. Hosting the rewards database requires a persistent writable directory.
 
-## What's included
-
-- **Home page**: hero, category grid, deals with a countdown, brand strip, trending products, customer photo grid
-- **Product listing**: filters (category, brand, price, size, color, rating), sorting, grid and list views, pagination
-- **Product page**: image gallery with zoom, size and color pickers, reviews, questions, "frequently bought together", recently viewed
-- **Category pages and search**
-- **Cart**: quantities, promo code field, save for later, order summary with shipping and tax
-- **Light and dark mode**, with colors set as design tokens so a rebrand is one file
-- **Accessibility built in**: skip link, keyboard navigation, visible focus states, labelled controls
-
-Everything runs on local seed data in `data/seed.ts`, so it works the moment you install it.
-
-## What's not included
-
-This is the storefront only. There's no checkout, no customer accounts, no admin panel and no backend. Buttons that lead there point to the full kit.
-
-| You need | Get |
-|---|---|
-| Checkout, customer accounts and an admin panel (56 screens, bring your own backend) | [E-commerce Kit](https://thefrontkit.com/apps/ecommerce-kit?utm_source=github&utm_medium=storefront-lite&utm_campaign=readme) · [live demo](https://ecommerce-kit-code.vercel.app) |
-| All of that plus Supabase (database, auth, storage) and Stripe Checkout already wired | [Full-Stack E-commerce Kit](https://thefrontkit.com/apps/ecommerce-fullstack-kit?utm_source=github&utm_medium=storefront-lite&utm_campaign=readme) · [live demo](https://ecommerce-supabase-code.vercel.app) |
-
-## Getting started
-
-```bash
-npm install
+```sh
+npm ci
 npm run dev
 ```
 
-Then open [http://localhost:3000](http://localhost:3000).
+Open [Rush District](http://localhost:3000). Run `npm run build` to check the production build.
 
-```bash
-npm run build   # production build
-npm run lint    # lint
+## Launch catalogue and packs
+
+The four 500 ml cans are masked from the source product photos in `public/media/1.jpeg` through `4.jpeg`, which stay in the repo; the site serves optimized transparent `can-*.webp` renders site-wide. The hero includes a pointer-lit grid, a 3D flavour carousel and a top-three leaderboard. The full-width launch offer banner sits below the four flavours. The collectibles glide continuously and open a detail card when selected. Reduced-motion preferences keep the row still and allow manual horizontal scrolling.
+
+| Pack | Selection | Included |
+| --- | --- | --- |
+| Solo | One can | Order collectible |
+| Collectors Case | Three or more cans | Special casing and one collectible per can |
+| Gift Box | Any three or five cans | Gift packaging, optional custom text card, keychain, sticker and collectible |
+
+Solo costs ₹249 per can during the website launch offer, with ₹350 displayed as the reference price. The Collectors Case costs ₹400 per can. Gift Boxes cost ₹999 for three cans or ₹1,599 for five cans. Orders of ₹499 or more receive free local delivery and a sticker. A sticker included in a Gift Box counts toward that order’s sticker reward.
+
+The ten gallery slots in `data/collectibles.ts` have provisional Common, Uncommon and Rare tiers. Add a name, image path and description to each slot when the product photos and details are available.
+
+## Customer accounts
+
+The account and delivery profile are stored in the rewards SQLite database. Verified customers can save their name, mobile number, street address, locality and PIN for checkout. A recorded paid order is required for referrals.
+
+Enable sign-in through `.env.local` using the keys in `.env.example`.
+
+- **Email codes** use `RESEND_API_KEY` and a sender address verified in Resend as `RUSH_EMAIL_FROM`. The server emails six-digit codes that expire after ten minutes and limits requests and verification attempts.
+- **Google** uses `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `RUSH_SITE_ORIGIN`. Register the exact redirect URI `<RUSH_SITE_ORIGIN>/api/account/google/callback` in the Google Web OAuth client. Google accounts with an external, non-hosted email verify ownership through the email-code flow.
+
+## Checkout and leaderboard
+
+The browser stores the bag and simulates checkout. Gift card text is stored with its pack in the bag. `/api/delivery-quote` validates the pack quantities, selected Kanyakumari locality and `629xxx` PIN format. It calculates the ₹50 local fee for orders below ₹499. Checkout requests this quote after address entry and displays the total before simulated payment. The endpoint receives locality and PIN along with pack quantities. Street address and contact fields stay in the browser for this demo.
+
+`/leaderboard` ranks collectors by can quantity with filters for locality and flavour. Demo orders can contribute using an opt-in alias at checkout. Ranking data is stored in the current browser and includes the alias, locality and counts by flavour. Street addresses, contact details and gift messages stay off the board. A shared live leaderboard needs a verified order backend and a persistent customer identifier.
+
+To enable a WhatsApp ordering draft, copy `.env.example` to `.env.local`, set `WHATSAPP_BUSINESS_NUMBER` to the merchant’s number including country code, and restart or rebuild.
+
+## Community rewards
+
+The server stores verified-buyer accounts and unboxing reviews in `.rush-data/rewards.sqlite`. Set `RUSH_REWARDS_DB` to a different absolute path if needed. Use the same database path for the site and the operator commands.
+
+Unboxing rewards run through Instagram: customers post a public Rush District Reel and tag the store. Set `RUSH_INSTAGRAM_HANDLE` in `.env.local` so the rewards card links to the profile. Tagging is reviewed manually; Instagram posts do not submit through the website and do not generate coupons automatically.
+
+The `pending`, `approve` and `decline` commands below only apply to unboxing videos submitted before the Instagram change. For those legacy submissions, confirm at least 1,000 visible views before granting a coupon. Choose the whole-rupee coupon value at approval. The approval command emails the coupon when store email is configured. Otherwise, it returns the coupon and recipient for manual delivery. The quote applies the coupon to cans and bases the free-delivery threshold on the subtotal before the coupon.
+
+```sh
+npm run rewards -- pending
+npm run rewards -- approve 1 1200 75
+npm run rewards -- decline 2
 ```
 
-## Stack
+Record a paid order after independently confirming payment. The matching verified email account automatically receives the referral link. The command also issues a private buyer key for buyers using the existing key-based flow. Demo checkout leaves paid-order records and coupons untouched. For an externally paid order with a coupon or referral, pass the matching option. Recording marks an approved coupon as redeemed. Rotation revokes the old buyer key and key-based sessions.
 
-- Next.js 16 (App Router), React 19, TypeScript
-- Tailwind CSS v4 with OKLCH color tokens
-- shadcn/ui (Base UI primitives), lucide-react icons
-- next-themes for dark mode
+```sh
+npm run rewards -- record-paid ORDER-123 buyer@example.com
+npm run rewards -- record-paid ORDER-124 friend@example.com --referral RUSH-000000000000 --coupon UNBOX-000000000000
+npm run rewards -- rotate-key buyer@example.com
+```
 
-## Customizing
+## Hosting on Netlify
 
-- **Products and categories:** edit `data/seed.ts`, or replace it with calls to your own API.
-- **Brand colors and fonts:** edit the tokens in `app/globals.css`.
-- **Store name:** the demo store is called "Ember". Search for it in `components/layout` to rename.
+`netlify.toml` is included. Import the repo in Netlify and the Next.js adapter is picked up automatically — no static export needed; the storefront demo is served as a Next.js app.
 
-## Images
-
-Product images are loaded from [Unsplash](https://unsplash.com) and are covered by the [Unsplash License](https://unsplash.com/license). Replace them with your own product photos before you launch.
-
-## License
-
-MIT. Use it for personal and commercial projects, including client work.
+Do not enable Google/email accounts or live coupon/referral features on Netlify until the SQLite data (sessions, OTP challenges, accounts and rewards) is moved to a managed persistent database, or the backend is hosted somewhere with a persistent writable disk. Pointing `RUSH_REWARDS_DB` at `/tmp` is not a fix. For the storefront demo, leave Google and email provider secrets unset; the bag, browsing, and simulated checkout remain available. Provider secret setup and the exact redirect URI remain as described in the Customer accounts section.

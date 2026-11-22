@@ -1,64 +1,57 @@
-import Link from "next/link"
-import { notFound } from "next/navigation"
-import { categories, products } from "@/data/seed"
-import { CategoryClient } from "./category-client"
+import type { Metadata } from "next"
+import { notFound, redirect } from "next/navigation"
+import { freeDeliveryNote, getPack, getProduct, packs, packPriceLabel } from "@/data/catalogue"
+import { PackBuilder } from "@/components/vault/pack-builder"
+import { PackArt, PackLinks } from "@/components/vault/pack-preview"
 
-interface CategoryPageProps {
+type Props = {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ flavour?: string | string[] }>
 }
 
-export async function generateMetadata({ params }: CategoryPageProps) {
-  const { slug } = await params
-  const category = categories.find((c) => c.slug === slug)
-  return { title: category?.name ?? "Category" }
+const previousRoutes: Record<string, string> = {
+  imported: "/products",
+  collectors: "/categories/collectors-case",
+  duo: "/categories/collectors-case",
+  gifts: "/categories/gift-box",
+  vault: "/#rewards",
 }
 
-export default async function CategoryPage({ params }: CategoryPageProps) {
-  const { slug } = await params
-  const category = categories.find((c) => c.slug === slug)
-  if (!category) notFound()
+export function generateStaticParams() {
+  return packs.map((pack) => ({ slug: pack.id }))
+}
 
-  const categoryProducts = products.filter(
-    (p) => p.category.toLowerCase() === category.name.toLowerCase() && p.status === "active"
-  )
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params
+  const pack = getPack(slug)
+  return { title: pack?.name, description: pack?.description }
+}
+
+export default async function PackPage({ params, searchParams }: Props) {
+  const { slug } = await params
+  if (Object.hasOwn(previousRoutes, slug)) redirect(previousRoutes[slug])
+  const pack = getPack(slug)
+  if (!pack) notFound()
+  const { flavour } = await searchParams
+  const product = typeof flavour === "string" ? getProduct(flavour) : undefined
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 animate-fade-in">
-      <nav className="mb-6 text-sm text-muted-foreground" aria-label="Breadcrumb">
-        <ol className="flex items-center gap-1.5">
-          <li><Link href="/" className="hover:text-foreground">Home</Link></li>
-          <li>/</li>
-          <li><Link href="/products" className="hover:text-foreground">Products</Link></li>
-          <li>/</li>
-          <li className="text-foreground">{category.name}</li>
-        </ol>
-      </nav>
-
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground md:text-4xl">{category.name}</h1>
-        <p className="mt-1 text-base text-muted-foreground">{category.description}</p>
-        {category.subcategories.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {category.subcategories.map((sub) => (
-              <Link
-                key={sub.slug}
-                href={`/categories/${slug}?sub=${sub.slug}`}
-                className="rounded-full border border-border px-3 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                {sub.name}
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {categoryProducts.length > 0 ? (
-        <CategoryClient category={category} products={categoryProducts} />
-      ) : (
-        <div className="py-16 text-center">
-          <p className="text-lg text-muted-foreground">No products found in this category.</p>
+    <section className="container content-page">
+      <div className="pack-detail-intro">
+        <div>
+          <p className="eyebrow green"><span /> BUILD YOUR PACK</p>
+          <h1 className="display page-title">{pack.name}</h1>
+          <p className="page-intro">{pack.id !== "gift-box" && `${pack.size} · `}{packPriceLabel[pack.id]}</p>
+          <p className="page-intro">{pack.description}</p>
+          {pack.id === "solo" && <p className="solo-delivery-note">{freeDeliveryNote}</p>}
         </div>
-      )}
-    </div>
+        <figure className="pack-detail-art">
+          <PackArt pack={pack.id} eager />
+          <figcaption className="pack-art-caption">Packaging illustration. Choose your flavours below.</figcaption>
+        </figure>
+      </div>
+      <PackBuilder key={`${pack.id}:${product?.slug ?? ""}`} pack={pack.id} initialFlavour={product?.slug} />
+      <div className="more-packs"><h2 className="display">EXPLORE PACKS</h2><PackLinks exclude={pack.id} /></div>
+    </section>
   )
 }
